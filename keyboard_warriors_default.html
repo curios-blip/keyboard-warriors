@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Pastel Overload</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700;900&display=swap');
+        
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #fffdf2;
+            font-family: 'Space Grotesk', sans-serif;
+            color: #2d3436;
+            overflow-x: hidden;
+        }
+
+        #main-wrapper {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0.75rem;
+            gap: 0.75rem;
+        }
+
+        .grid-cell { 
+            transition: all 0.2s ease; 
+            border: 2px solid #2d3436; 
+            background: white; 
+            font-size: 0.55rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            line-height: 1.1;
+            padding: 2px;
+            position: relative;
+            border-radius: 8px;
+            min-height: 50px;
+        }
+
+        .player-1-token { 
+            background: #ff74b1; 
+            box-shadow: 0 4px 8px rgba(255, 116, 177, 0.5); 
+            border: 2px solid white; 
+            border-radius: 9999px;
+        }
+        
+        .player-2-token { 
+            background: #74b9ff; 
+            box-shadow: 0 4px 8px rgba(116, 185, 255, 0.5); 
+            border: 2px solid white; 
+            border-radius: 9999px;
+        }
+
+        .hazard { background: #ffeaa7; border: 2px solid #fab1a0; }
+        .patch { background: #55efc4; border: 2px solid #00b894; }
+        
+        .text-hazard { color: #b33939; font-weight: 900; }
+        .text-patch { color: #006266; font-weight: 900; }
+        .cell-num { color: #a4b0be; font-weight: 700; font-size: 0.55rem; position: absolute; top: 2px; right: 4px; }
+
+        .challenge-label { 
+            font-size: 0.45rem; 
+            margin-top: 2px; 
+            text-transform: uppercase; 
+            font-weight: 900;
+            max-width: 95%;
+            line-height: 1;
+        }
+
+        .v-sound {
+            position: absolute;
+            pointer-events: none;
+            animation: popOut 0.8s ease-out forwards;
+            font-weight: 900;
+            font-style: italic;
+            z-index: 100;
+            text-shadow: 2px 2px 0 white;
+        }
+
+        .sarcasm-bubble {
+            position: fixed;
+            top: 12%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #000;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-weight: bold;
+            z-index: 200;
+            animation: slideFade 2.5s ease-in-out forwards;
+            border: 3px solid #fdcb6e;
+            box-shadow: 4px 4px 0px rgba(0,0,0,1);
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        @keyframes slideFade {
+            0% { transform: translate(-50%, 20px); opacity: 0; }
+            10% { transform: translate(-50%, 0); opacity: 1; }
+            90% { transform: translate(-50%, 0); opacity: 1; }
+            100% { transform: translate(-50%, -20px); opacity: 0; }
+        }
+
+        @keyframes popOut {
+            0% { transform: scale(0.5) translateY(0); opacity: 0; }
+            20% { transform: scale(1.2) translateY(-20px); opacity: 1; }
+            100% { transform: scale(1) translateY(-60px); opacity: 0; }
+        }
+
+        .shake { animation: shake 0.4s; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-8px); }
+            75% { transform: translateX(8px); }
+        }
+
+        .rematch-btn {
+            background: #ff7675;
+            border: 2px solid black;
+            box-shadow: 3px 3px 0px black;
+            transition: all 0.1s;
+        }
+        .rematch-btn:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 4px 4px 0px black;
+        }
+        .rematch-btn:active {
+            box-shadow: 0px 0px 0px black;
+            transform: translate(2px, 2px);
+        }
+
+        .agree-btn {
+            background: #55efc4;
+            border: 3px solid black;
+            box-shadow: 4px 4px 0px black;
+            transition: all 0.1s;
+        }
+        .agree-btn:hover {
+            transform: translate(-1px, -1px);
+            box-shadow: 5px 5px 0px black;
+        }
+        .agree-btn:active {
+            box-shadow: 0px 0px 0px black;
+            transform: translate(3px, 3px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="main-wrapper">
+        <!-- TOP: Header & Player Stats -->
+        <div class="flex flex-wrap items-center gap-3 bg-white p-3 rounded-2xl shadow-lg border-4 border-black">
+            <div class="flex items-center gap-3 pr-4 border-r-2 border-slate-200">
+                <h1 class="text-lg sm:text-xl font-black italic tracking-tighter leading-none">KEYBOARD<br>WARRIORS</h1>
+                <button id="top-restart-btn" class="rematch-btn px-3 py-1.5 rounded-xl flex flex-col items-center cursor-pointer">
+                    <span class="text-[11px] font-black text-white leading-none uppercase tracking-wide">RESTART [PRESS ENTER]</span>
+                    <span class="text-[8px] font-bold text-black/80 leading-none lowercase italic mt-0.5">cus you messed up already</span>
+                </button>
+            </div>
+            
+            <div id="p1-stat" class="flex-1 min-w-[140px] flex items-center gap-3 p-2 rounded-xl border-2 border-black transition-all bg-[#ff74b111]">
+                <div class="font-black text-xs" id="p1-name-tag">PLAYER 1</div>
+                <div class="flex-1 h-3 bg-slate-100 rounded-full border border-black overflow-hidden">
+                    <div id="p1-energy-bar" class="bg-[#ff74b1] h-full transition-all duration-300" style="width: 100%"></div>
+                </div>
+                <span class="text-xs font-black">TILE: <span id="p1-pos">0</span></span>
+            </div>
+
+            <div id="p2-stat" class="flex-1 min-w-[140px] flex items-center gap-3 p-2 rounded-xl border-2 border-black opacity-40 transition-all bg-[#74b9ff11]">
+                <div class="font-black text-xs" id="p2-name-tag">PLAYER 2</div>
+                <div class="flex-1 h-3 bg-slate-100 rounded-full border border-black overflow-hidden">
+                    <div id="p2-energy-bar" class="bg-[#74b9ff] h-full transition-all duration-300" style="width: 100%"></div>
+                </div>
+                <span class="text-xs font-black">TILE: <span id="p2-pos">0</span></span>
+            </div>
+        </div>
+
+        <!-- MIDDLE: 50 Tile Game Board -->
+        <div id="board" class="flex-1 grid grid-cols-5 sm:grid-cols-10 gap-1.5 p-2 bg-white rounded-2xl shadow-xl border-4 border-black relative overflow-hidden min-h-[300px]">
+            <!-- Cells generated dynamically via JS -->
+        </div>
+
+        <!-- BOTTOM: Typing Input & Controls -->
+        <div class="bg-[#fdcb6e] p-4 rounded-2xl border-4 border-black shadow-[5px_5px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center gap-2">
+            <div id="turn-indicator" class="font-black text-black uppercase text-xs tracking-widest">PLAYER 1'S TURN</div>
+            
+            <div id="qte-box" class="w-full max-w-md h-[64px] flex items-center justify-center">
+                <button id="start-btn" class="w-full h-full bg-black text-white py-3 px-6 rounded-xl font-black text-base tracking-wider hover:bg-slate-900 active:scale-98 transition-all shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] flex items-center justify-center">
+                    START TYPING [PRESS ENTER]
+                </button>
+
+                <div id="qte-active" class="hidden w-full h-full flex items-center justify-center bg-white p-1.5 rounded-xl border-3 border-black shadow-inner">
+                    <div class="w-full h-full flex items-center justify-center">
+                        <!-- Single Word Bar with integrated invisible typing overlay -->
+                        <div id="qte-char-display-wrap" class="relative w-full h-full flex items-center justify-center">
+                            <div id="qte-char-display" class="bg-[#ffeaa7] border-2 border-black rounded-lg px-4 text-center font-black text-xl sm:text-2xl tracking-widest text-black w-full h-full shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] uppercase flex items-center justify-center gap-0.5">
+                                TARGET
+                            </div>
+                            <!-- Transparent input layered directly over the word bar -->
+                            <form id="qte-form" class="m-0 p-0 absolute inset-0 w-full h-full">
+                                <input id="qte-input" type="text" class="w-full h-full opacity-0 cursor-pointer z-20 text-center" autocomplete="off">
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 min-h-[20px]">
+                <p id="feedback" class="font-black italic text-black uppercase text-sm"></p>
+                <p id="sub-feedback" class="text-[10px] font-bold text-black/70 uppercase self-center"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules & Discord Permissions Modal -->
+    <div id="rules-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-black rounded-2xl p-6 max-w-lg w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4">
+            <div class="flex items-center justify-between border-b-4 border-black pb-3">
+                <h2 class="text-2xl font-black italic tracking-tighter uppercase">GAME RULES & PERMISSIONS</h2>
+                <span class="bg-[#ff74b1] text-white border-2 border-black font-black text-xs px-2 py-0.5 rounded-md uppercase">V2.5</span>
+            </div>
+
+            <ul class="text-xs font-bold text-slate-800 space-y-2.5 list-disc pl-4 leading-relaxed">
+                <li><strong class="text-black">Turn-Based Typing Race:</strong> Players take turns typing randomly assigned words to advance across 50 tiles.</li>
+                <li><strong class="text-black">Speed Matters:</strong> Typing under 1.2s awards <span class="text-emerald-600 font-black">+8 tiles</span>, under 2.5s gives <span class="text-blue-600 font-black">+6 tiles</span>, under 5.0s gives <span class="text-amber-600 font-black">+4 tiles</span>, and typos move you only <span class="text-red-600 font-black">+1 tile</span>.</li>
+                <li><strong class="text-black">Patches & Bugs:</strong> Landing on green patches catapults you forward; stepping on yellow bugs sends you sliding backwards!</li>
+                <li><strong class="text-black">Energy & Knockbacks:</strong> Landing on an opponent knocks them back 4 tiles and steals 5 Energy points.</li>
+                <li><strong class="text-black">Stuck Loop Tiebreaker:</strong> If both players get stuck around the same tile for 3 turns, a rapid-fire Sudden Death Speed Round triggers!</li>
+            </ul>
+
+            <!-- Sarcastic Discord Permission Box -->
+            <div class="bg-[#ffeaa7] border-2 border-black p-3 rounded-xl flex flex-col gap-1 text-[11px] font-bold">
+                <span class="text-black font-black uppercase tracking-wider"> PERMISSION AGREEMENT</span>
+                <p class="text-slate-800 leading-normal">
+                    By clicking I Agree or pressing Enter, you hereby grant Keyboard Warriors permission to evaluate your WPM, log your typos, publicly mock your keycaps, and judge your inability to type basic English words under minimal pressure.
+                </p>
+            </div>
+
+            <button id="accept-rules-btn" class="agree-btn py-3 px-4 rounded-xl flex flex-col items-center justify-center cursor-pointer">
+                <span class="text-sm sm:text-base font-black text-black leading-none uppercase">I AGREE [PRESS ENTER]</span>
+                <span class="text-[10px] font-bold text-black/80 leading-none lowercase italic mt-1">(Proceeding against all better judgment)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Speed Round Tiebreaker Modal -->
+    <div id="speed-round-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-black rounded-2xl p-6 max-w-md w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 text-center">
+            <span class="bg-[#fdcb6e] text-black border-2 border-black font-black text-xs uppercase px-3 py-1 rounded-full self-center animate-pulse"> STUCK DETECTED! SPEED ROUND </span>
+            <h2 id="speed-title" class="text-2xl sm:text-3xl font-black italic uppercase tracking-tighter">SUDDEN DEATH TYPING!</h2>
+            
+            <p class="text-xs font-bold text-slate-700 leading-relaxed">
+                You've both been stuck in a knockback loop around tile <span id="stuck-tile-num" class="font-black text-black underline">0</span>! 
+                Type 3 words as fast as possible. Pawns are frozen. Fastest cumulative time launches forward 5 tiles; slowest retreats 4!
+            <!-- Speed Round Interactive Area -->
+            <div id="speed-interactive-area" class="bg-[#ffeaa7] border-2 border-black p-4 rounded-xl flex flex-col items-center gap-3">
+                <div id="speed-player-tag" class="font-black text-xs uppercase bg-black text-white px-3 py-1 rounded-md">PLAYER 1 UP FIRST</div>
+                
+                <div class="w-full flex flex-col items-center gap-1">
+                    <div class="relative w-full">
+                        <div id="speed-char-display" class="font-black text-xl sm:text-2xl tracking-widest bg-white px-4 py-3 rounded-lg border-2 border-black w-full text-center flex items-center justify-center min-h-[55px] flex-wrap gap-0.5">READY?</div>
+                        <input id="speed-qte-input" type="text" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20 text-center" disabled autocomplete="off">
+                    </div>
+                </div>
+                <span id="speed-progress-text" class="text-[10px] font-black text-slate-700 uppercase">3 words ahead!</span>
+            </div>
+
+            <div id="speed-summary-box" class="hidden bg-slate-100 border-2 border-black p-3 rounded-xl text-xs font-bold flex flex-col gap-1">
+                <div class="flex justify-between"><span>PLAYER 1 TIME:</span><span id="p1-speed-result" class="font-black">0.00s</span></div>
+                <div class="flex justify-between"><span>PLAYER 2 TIME:</span><span id="p2-speed-result" class="font-black">0.00s</span></div>
+            </div>
+
+            <button id="speed-action-btn" class="agree-btn py-3 px-4 rounded-xl flex flex-col items-center justify-center cursor-pointer">
+                <span class="text-sm font-black text-black leading-none uppercase">START PLAYER 1 [PRESS ENTER]</span>
+                <span class="text-[9px] font-bold text-black/80 leading-none lowercase italic mt-0.5">(Prepare your fingers!)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Over Modal -->
+    <div id="game-over-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+        <div class="bg-white border-4 border-black rounded-2xl p-6 max-w-md w-full shadow-[10px_10px_0px_0px_rgba(0,0,0,1)] flex flex-col gap-4 text-center">
+            <span class="bg-[#ff74b1] text-white border-2 border-black font-black text-xs uppercase px-3 py-1 rounded-full self-center"> MATCH COMPLETE </span>
+            <h2 id="winner-title" class="text-3xl font-black italic uppercase tracking-tighter">PLAYER 1 WINS!</h2>
+            
+            <div class="bg-[#ffeaa7] border-2 border-black p-4 rounded-xl flex flex-col gap-2 text-left">
+                <div class="flex justify-between text-xs font-black border-b border-black/20 pb-1">
+                    <span>MARGIN OF VICTORY:</span>
+                    <span id="win-lead" class="text-black">12 TILES AHEAD</span>
+                </div>
+                <div class="flex justify-between text-xs font-black border-b border-black/20 pb-1">
+                    <span>TIME WASTED:</span>
+                    <span id="win-time" class="text-black">2.4 MINUTES</span>
+                </div>
+                <div class="mt-1">
+                    <span class="text-[10px] font-black text-slate-500 uppercase block">PRODUCTIVITY EVALUATION:</span>
+                    <p id="roast-text" class="text-xs font-bold text-black italic mt-0.5">"In those 2.4 minutes, you could have learned a new language or done 50 pushups. Instead, you smashed plastic keys."</p>
+                </div>
+            </div>
+
+            <button id="restart-game-btn" class="rematch-btn py-3 px-4 rounded-xl flex flex-col items-center justify-center cursor-pointer">
+                <span class="text-sm sm:text-base font-black text-white leading-none uppercase">PLAY AGAIN [PRESS ENTER]</span>
+                <span class="text-[10px] font-bold text-black/80 leading-none lowercase italic mt-1">(cus you have nothing better to do anyway)</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        const BOARD_SIZE = 50;
+        const INITIAL_ENERGY = 20;
+        let matchStartTime = Date.now();
+        
+        // Casual, everyday words - pure letters only!
+        const WORDS = [
+            "RAINING", "BURGERS", "WEEKEND", "ROUTINE", "DISCORD", "POSTERS", "DOODLE", "RELATABLE", 
+            "CEILING", "ZEALOUS", "BUBBLES", "BLANKETS", "LACKEY", "RIDICULOUS", "BAGPACK", "VACATION", 
+            "LAUGHTER", "GHIBLI", "LICKABLES", "INDONESIA", "DONUT", "GIGGLES", "SUNDAY", "MARSHMALLOW", 
+            "SHUTTER", "CHLORINE", "PENGUIN", "SPARKLE", "STRAWBERRIES", "BINOCULARS", "RAMBLE", "BREEZY"
+        ];
+        
+        const PATCHES = { 
+            5: { target: 14, label: 'LUCKY GUESS' }, 
+            15: { target: 26, label: 'CAFFEINE RUSH' }, 
+            32: { target: 44, label: 'PLACEBO EFFECT' }, 
+            22: { target: 35, label: 'ACCIDENTAL GENIUS' } 
+        };
+        
+        const BUGS = { 
+            19: { target: 4, label: 'SHELDON\'S SPOT' }, 
+            29: { target: 10, label: 'DOOMSCROLLING' }, 
+            47: { target: 25, label: 'EXISTENTIAL DREAD' }, 
+            38: { target: 20, label: 'OVERTHINKING' } 
+        };
+
+        const ROASTS = [
+            "In this time, you could have learned 3 words of conversational French or drank a glass of water.",
+            "You could have stretched your back or taken out the trash, but here we are.",
+            "Your keyboard switches survived, but your productivity score is literally zero.",
+            "Congratulations on spending precious minutes of your human life typing pseudo-technical jargon.",
+            "You could have read two pages of a book or touched grass outside."
+        ];
+
+        const PLAYER_PERSONALITIES = [
+            {
+                name: "PLAYER 1",
+                fast: ["120 WPM! Pure muscle memory.", "Lightning fast response!", "Fingers on fire!"],
+                medium: ["6 steps. Decent pace.", "Not bad, but room for speed.", "Solid keystrokes."],
+                slow: ["2 steps? Did your finger freeze?", "Typing like a snail.", "That was a turtle sprint."],
+                bug: ["Brain fart detected! Sliding back!", "Existential dread! Retreating!"],
+                patch: ["Accidental genius! Launching ahead!", "Caffeine rush engaged!"],
+                fail: ["TYPO! Fingers slipped!", "TOTAL BLUNDER!"]
+            },
+            {
+                name: "PLAYER 2",
+                fast: ["Whoa! Unexpected speed burst!", "Fast fingers on Player 2!", "A rare moment of high WPM!"],
+                medium: ["6 steps. Slow and steady.", "Carefully calculated keystrokes.", "Methodical progress."],
+                slow: ["2 steps. Hunting and pecking?", "One... key... per... hour.", "Taking a scenic typing walk."],
+                bug: ["Overthinking penalty!", "Doomscrolling trapped you!"],
+                patch: ["Lucky guess unlocked!", "Skipping forward cleanly!"],
+                fail: ["CANNOT FIND LETTERS!", "TYPO DETECTED!"]
+            }
+        ];
+
+        let state = {
+            players: [
+                { id: 0, pos: 0, energy: INITIAL_ENERGY, color: 'player-1-token', name: 'PLAYER 1' },
+                { id: 1, pos: 0, energy: INITIAL_ENERGY, color: 'player-2-token', name: 'PLAYER 2' }
+            ],
+            currentPlayer: 0,
+            startTime: 0,
+            mistakeCount: 0,
+            wordPool: [...WORDS],
+            stuckTurnCount: 0,
+            lastKnockbackTile: -1,
+            speedRound: {
+                active: false,
+                step: 'init',
+                triggerPlayer: 0,
+                p1Words: [],
+                p2Words: [],
+                wordIdx: 0,
+                p1Time: 0,
+                p2Time: 0,
+                p1StartTime: 0,
+                p2StartTime: 0
+            }
+        };
+
+        function closePermissionsModal() {
+            const rulesModal = document.getElementById('rules-modal');
+            if (rulesModal && !rulesModal.classList.contains('hidden')) {
+                rulesModal.classList.add('hidden');
+                matchStartTime = Date.now();
+            }
+        }
+
+        // Utility to render space-insensitive live letter feedback
+        function renderCharDisplay(displayElem, targetWord, rawInputValue) {
+            if (!displayElem) return;
+            // Strip spaces for space insensitivity
+            const cleanInput = rawInputValue.replace(/\s+/g, '').toUpperCase();
+            const cleanTarget = targetWord.replace(/\s+/g, '').toUpperCase();
+
+            displayElem.innerHTML = '';
+            const maxLen = Math.max(cleanTarget.length, cleanInput.length);
+
+            for (let i = 0; i < maxLen; i++) {
+                const span = document.createElement('span');
+                span.style.fontFamily = "'Space Grotesk', monospace";
+                span.style.fontSize = "1.3rem";
+                span.style.fontWeight = "900";
+                span.style.letterSpacing = "0.05em";
+                span.style.display = "inline-block";
+                span.style.padding = "0 1px";
+                span.style.transition = "all 0.1s ease";
+
+                if (i < cleanInput.length) {
+                    const typedChar = cleanInput[i];
+                    const targetChar = cleanTarget[i];
+
+                    if (i < cleanTarget.length) {
+                        if (typedChar === targetChar) {
+                            // Correct character: BLACK
+                            span.innerText = typedChar;
+                            span.style.color = '#000000';
+                        } else {
+                            // Mismatched character: RED
+                            span.innerText = typedChar;
+                            span.style.color = '#e17055';
+                            span.style.backgroundColor = '#ff767533';
+                            span.style.borderRadius = '4px';
+                            span.style.textDecoration = 'underline';
+                        }
+                    } else {
+                        // Extra character typed beyond target length: RED
+                        span.innerText = typedChar;
+                        span.style.color = '#d63031';
+                        span.style.backgroundColor = '#ff767544';
+                        span.style.borderRadius = '4px';
+                    }
+                } else {
+                    // Untyped target character: GREY
+                    span.innerText = cleanTarget[i];
+                    span.style.color = '#a4b0be';
+                }
+
+                displayElem.appendChild(span);
+            }
+        }
+
+        function resetGame(showRules = false) {
+            matchStartTime = Date.now();
+            state.players[0].pos = 0;
+            state.players[0].energy = INITIAL_ENERGY;
+            state.players[1].pos = 0;
+            state.players[1].energy = INITIAL_ENERGY;
+            state.currentPlayer = 0;
+            state.stuckTurnCount = 0;
+            state.lastKnockbackTile = -1;
+            state.wordPool = [...WORDS];
+
+            if (showRules) {
+                document.getElementById('rules-modal').classList.remove('hidden');
+            } else {
+                document.getElementById('rules-modal').classList.add('hidden');
+            }
+
+            document.getElementById('game-over-modal').classList.add('hidden');
+            document.getElementById('speed-round-modal').classList.add('hidden');
+            document.getElementById('qte-active').classList.replace('flex', 'hidden');
+            document.getElementById('qte-active').classList.add('hidden');
+            document.getElementById('start-btn').classList.remove('hidden');
+
+            document.getElementById('feedback').innerText = '';
+            document.getElementById('sub-feedback').innerText = '';
+
+            updateUI();
+        }
+
+        function getNewWord() {
+            if (state.wordPool.length === 0) state.wordPool = [...WORDS];
+            const index = Math.floor(Math.random() * state.wordPool.length);
+            return state.wordPool.splice(index, 1)[0];
+        }
+
+        function showSarcasm(type, customText = null) {
+            const persona = PLAYER_PERSONALITIES[state.currentPlayer];
+            const list = persona[type] || persona.medium;
+            const text = customText || list[Math.floor(Math.random() * list.length)];
+            const el = document.createElement('div');
+            el.className = 'sarcasm-bubble';
+            el.innerText = text;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 2500);
+        }
+
+        function visualSound(text, x, y, color = "#000") {
+            const el = document.createElement('div');
+            el.className = 'v-sound';
+            el.innerText = text;
+            el.style.left = (x || window.innerWidth/2) + 'px';
+            el.style.top = (y || window.innerHeight/2) + 'px';
+            el.style.color = color;
+            document.body.appendChild(el);
+            setTimeout(() => el.remove(), 1000);
+        }
+
+        function initBoard() {
+            const board = document.getElementById('board');
+            if (!board) return;
+            board.innerHTML = '';
+            for (let i = 0; i < BOARD_SIZE; i++) {
+                const cell = document.createElement('div');
+                cell.className = `grid-cell rounded-lg`;
+                cell.id = `cell-${i}`;
+                
+                const numSpan = document.createElement('span');
+                numSpan.className = 'cell-num';
+                numSpan.innerText = i;
+                cell.appendChild(numSpan);
+
+                if (PATCHES[i]) {
+                    cell.classList.add('patch');
+                    const label = document.createElement('span');
+                    label.className = 'challenge-label text-patch';
+                    label.innerText = PATCHES[i].label;
+                    cell.appendChild(label);
+                }
+                if (BUGS[i]) {
+                    cell.classList.add('hazard');
+                    const label = document.createElement('span');
+                    label.className = 'challenge-label text-hazard';
+                    label.innerText = BUGS[i].label;
+                    cell.appendChild(label);
+                }
+                board.appendChild(cell);
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            document.querySelectorAll('.player-1-token, .player-2-token').forEach(e => e.remove());
+            state.players.forEach(p => {
+                const cell = document.getElementById(`cell-${p.pos}`);
+                if (!cell) return;
+                const token = document.createElement('div');
+                token.className = `${p.color} w-4 h-4 sm:w-5 sm:h-5 absolute transition-all duration-300 z-10`;
+                cell.appendChild(token);
+                document.getElementById(`p${p.id+1}-pos`).innerText = p.pos;
+                document.getElementById(`p${p.id+1}-energy-bar`).style.width = `${Math.max(0, (p.energy / INITIAL_ENERGY) * 100)}%`;
+            });
+            document.getElementById('p1-stat').style.opacity = state.currentPlayer === 0 ? '1' : '0.4';
+            document.getElementById('p2-stat').style.opacity = state.currentPlayer === 1 ? '1' : '0.4';
+            document.getElementById('turn-indicator').innerText = `${state.players[state.currentPlayer].name}'S TURN`;
+        }
+
+        function startTurn() {
+            const p = state.players[state.currentPlayer];
+            state.mistakeCount = 0;
+            document.getElementById('feedback').innerText = '';
+            document.getElementById('sub-feedback').innerText = '';
+            
+            if (p.energy <= 0) {
+                visualSound("RECHARGING ENERGY...", window.innerWidth/2, window.innerHeight/2, "#ff74b1");
+                p.energy = 10;
+                nextTurn();
+                return;
+            }
+            
+            document.getElementById('start-btn').classList.add('hidden');
+            const qteActive = document.getElementById('qte-active');
+            qteActive.classList.remove('hidden');
+            qteActive.classList.add('flex');
+            
+            const input = document.getElementById('qte-input');
+            const targetWord = getNewWord();
+            input.value = '';
+            input.setAttribute('data-target', targetWord);
+            
+            // Render initial target word in GREY on the word bar
+            const display = document.getElementById('qte-char-display');
+            renderCharDisplay(display, targetWord, '');
+            input.focus();
+            
+            state.startTime = Date.now();
+        }
+
+        async function resolveMove(time) {
+            document.getElementById('qte-active').classList.replace('flex', 'hidden');
+            document.getElementById('qte-active').classList.add('hidden');
+            document.getElementById('start-btn').classList.remove('hidden');
+
+            let move = 0;
+            let speedType = '';
+            
+            if (time < 1.2) { move = 8; speedType = 'fast'; } 
+            else if (time < 2.5) { move = 6; speedType = 'medium'; } 
+            else if (time < 5.0) { move = 4; speedType = 'slow'; } 
+            else { move = 1; speedType = 'fail'; }
+
+            const p = state.players[state.currentPlayer];
+            const other = state.players[state.currentPlayer === 0 ? 1 : 0];
+
+            if (speedType !== 'fail') {
+                visualSound(time < 1.2 ? "INSANE SPEED!" : "GOOD PACING!", window.innerWidth/2, window.innerHeight/2, "#000");
+                showSarcasm(speedType);
+            }
+            
+            document.getElementById('feedback').innerText = `+${move} TILES`;
+            document.getElementById('sub-feedback').innerText = time > 100 ? 'FAILED' : `${time.toFixed(2)}s`;
+
+            p.energy -= 1;
+            for(let i=0; i<move; i++) {
+                if (p.pos < BOARD_SIZE - 1) {
+                    p.pos++;
+                    updateUI();
+                    await new Promise(r => setTimeout(r, 80));
+                }
+            }
+
+            let wasKnockback = false;
+            if (p.pos === other.pos && p.pos !== 0) {
+                wasKnockback = true;
+                p.energy += 5; 
+                other.energy -= 5;
+                other.pos = Math.max(0, other.pos - 4);
+                document.getElementById('board').classList.add('shake');
+                setTimeout(() => document.getElementById('board').classList.remove('shake'), 400);
+            }
+
+            if (PATCHES[p.pos]) {
+                showSarcasm('patch');
+                p.pos = PATCHES[p.pos].target;
+            } else if (BUGS[p.pos]) {
+                showSarcasm('bug');
+                p.pos = BUGS[p.pos].target;
+                p.energy -= 2;
+            }
+
+            // Detect repetitive stuck ping-pong loops
+            const dist = Math.abs(p.pos - other.pos);
+            if (wasKnockback || dist <= 3) {
+                state.stuckTurnCount++;
+                state.lastKnockbackTile = p.pos;
+            } else if (dist > 5) {
+                state.stuckTurnCount = 0;
+            }
+
+            if (p.pos >= BOARD_SIZE - 1) {
+                triggerGameOver(p, other);
+                return;
+            }
+
+            updateUI();
+
+            // Trigger speed round only after 5 consecutive turns landing on/near the same tile
+            if (state.stuckTurnCount >= 5) {
+                triggerSpeedRound();
+                return;
+            }
+
+            nextTurn();
+        }
+
+        function nextTurn() {
+            state.currentPlayer = state.currentPlayer === 0 ? 1 : 0;
+            updateUI();
+        }
+
+        function triggerSpeedRound() {
+            state.stuckTurnCount = 0;
+            state.speedRound.active = true;
+            state.speedRound.step = 'init';
+            state.speedRound.triggerPlayer = state.currentPlayer; // Store player who triggered the speed round
+            
+            // Generate a single shared set of 3 words, shuffled into different order for P2
+            const commonWords = [getNewWord(), getNewWord(), getNewWord()];
+            const p1Words = [...commonWords];
+            let p2Words = [...commonWords].sort(() => Math.random() - 0.5);
+            if (p2Words[0] === p1Words[0] && p2Words[1] === p1Words[1]) {
+                p2Words = [commonWords[1], commonWords[2], commonWords[0]];
+            }
+
+            state.speedRound.p1Words = p1Words;
+            state.speedRound.p2Words = p2Words;
+            state.speedRound.wordIdx = 0;
+            state.speedRound.p1Time = 0;
+            state.speedRound.p2Time = 0;
+
+            document.getElementById('stuck-tile-num').innerText = state.lastKnockbackTile >= 0 ? state.lastKnockbackTile : state.players[0].pos;
+            document.getElementById('speed-player-tag').innerText = 'PLAYER 1 UP FIRST';
+            document.getElementById('speed-char-display').innerText = 'READY?';
+            document.getElementById('speed-qte-input').value = '';
+            document.getElementById('speed-qte-input').disabled = true;
+            document.getElementById('speed-progress-text').innerText = '3 words ahead!';
+            document.getElementById('speed-summary-box').classList.add('hidden');
+            
+            const btn = document.getElementById('speed-action-btn');
+            btn.classList.remove('hidden');
+            btn.innerHTML = `<span class="text-sm font-black text-black leading-none uppercase">START PLAYER 1 [PRESS ENTER]</span><span class="text-[9px] font-bold text-black/80 leading-none lowercase italic mt-0.5">(Prepare your fingers!)</span>`;
+
+            document.getElementById('speed-round-modal').classList.remove('hidden');
+        }
+
+        function handleSpeedAction() {
+            const sr = state.speedRound;
+            const input = document.getElementById('speed-qte-input');
+            const btn = document.getElementById('speed-action-btn');
+            const display = document.getElementById('speed-char-display');
+
+            if (sr.step === 'init') {
+                sr.step = 'p1_typing';
+                sr.wordIdx = 0;
+                document.getElementById('speed-player-tag').innerText = 'PLAYER 1 TYPING!';
+                const target = sr.p1Words[0];
+                renderCharDisplay(display, target, '');
+                input.disabled = false;
+                input.value = '';
+                input.focus();
+                btn.classList.add('hidden');
+                sr.p1StartTime = Date.now();
+            } else if (sr.step === 'p2_ready') {
+                sr.step = 'p2_typing';
+                sr.wordIdx = 0;
+                document.getElementById('speed-player-tag').innerText = 'PLAYER 2 TYPING!';
+                const target = sr.p2Words[0];
+                renderCharDisplay(display, target, '');
+                input.disabled = false;
+                input.value = '';
+                input.focus();
+                btn.classList.add('hidden');
+                sr.p2StartTime = Date.now();
+            } else if (sr.step === 'finished') {
+                if (document.activeElement) document.activeElement.blur();
+                document.getElementById('speed-round-modal').classList.add('hidden');
+                sr.active = false;
+
+                const p1Win = sr.p1Time <= sr.p2Time;
+                const winner = state.players[p1Win ? 0 : 1];
+                const loser = state.players[p1Win ? 1 : 0];
+
+                winner.pos = Math.min(BOARD_SIZE - 1, winner.pos + 5);
+                loser.pos = Math.max(0, loser.pos - 4);
+                
+                // Guarantee turn order passes to the next player relative to who triggered the speed round
+                state.currentPlayer = sr.triggerPlayer;
+
+                updateUI();
+
+                if (winner.pos >= BOARD_SIZE - 1) {
+                    triggerGameOver(winner, loser);
+                    return;
+                }
+                
+                // Reset standard turn input boxes
+                const qteActive = document.getElementById('qte-active');
+                if (qteActive) {
+                    qteActive.classList.replace('flex', 'hidden');
+                    qteActive.classList.add('hidden');
+                }
+                const startBtn = document.getElementById('start-btn');
+                if (startBtn) {
+                    startBtn.classList.remove('hidden');
+                }
+
+                nextTurn();
+            }
+        }
+
+        function handleSpeedInput() {
+            const input = document.getElementById('speed-qte-input');
+            const sr = state.speedRound;
+            const currentWords = sr.step === 'p1_typing' ? sr.p1Words : sr.p2Words;
+            const target = currentWords[sr.wordIdx] || '';
+            const display = document.getElementById('speed-char-display');
+
+            // Render space-insensitive character feedback
+            renderCharDisplay(display, target, input.value);
+
+            const cleanInput = input.value.replace(/\s+/g, '').toUpperCase();
+            const cleanTarget = target.replace(/\s+/g, '').toUpperCase();
+
+            if (cleanInput !== cleanTarget) return;
+
+            const now = Date.now();
+            sr.wordIdx++;
+            if (sr.wordIdx < 3) {
+                const nextTarget = currentWords[sr.wordIdx];
+                renderCharDisplay(display, nextTarget, '');
+                document.getElementById('speed-progress-text').innerText = `${3 - sr.wordIdx} words left!`;
+                input.value = '';
+            } else {
+                input.disabled = true;
+                input.value = '';
+                const btn = document.getElementById('speed-action-btn');
+                btn.classList.remove('hidden');
+
+                if (sr.step === 'p1_typing') {
+                    sr.p1Time = (now - sr.p1StartTime) / 1000;
+                    sr.step = 'p2_ready';
+                    document.getElementById('speed-player-tag').innerText = 'PLAYER 1 DONE!';
+                    display.innerText = 'P2 READY?';
+                    document.getElementById('speed-progress-text').innerText = `P1 Time: ${sr.p1Time.toFixed(2)}s`;
+                    btn.innerHTML = `<span class="text-sm font-black text-black leading-none uppercase">START PLAYER 2 [PRESS ENTER]</span><span class="text-[9px] font-bold text-black/80 leading-none lowercase italic mt-0.5">(Player 2, get set!)</span>`;
+                } else if (sr.step === 'p2_typing') {
+                    sr.p2Time = (now - sr.p2StartTime) / 1000;
+                    sr.step = 'finished';
+
+                    document.getElementById('speed-summary-box').classList.remove('hidden');
+                    document.getElementById('p1-speed-result').innerText = `${sr.p1Time.toFixed(2)}s`;
+                    document.getElementById('p2-speed-result').innerText = `${sr.p2Time.toFixed(2)}s`;
+
+                    const p1Win = sr.p1Time <= sr.p2Time;
+                    document.getElementById('speed-player-tag').innerText = p1Win ? 'PLAYER 1 WINS SPEED ROUND!' : 'PLAYER 2 WINS SPEED ROUND!';
+                    display.innerText = p1Win ? 'P1 +5 TILES' : 'P2 +5 TILES';
+                    document.getElementById('speed-progress-text').innerText = 'Tiebreaker complete!';
+                    btn.innerHTML = `<span class="text-sm font-black text-black leading-none uppercase">APPLY RESULTS [PRESS ENTER]</span>`;
+                }
+            }
+        }
+
+        function triggerGameOver(winner, loser) {
+            const timeMins = ((Date.now() - matchStartTime) / 60000).toFixed(1);
+            const lead = winner.pos - loser.pos;
+            
+            document.getElementById('winner-title').innerText = `${winner.name} WINS!`;
+            document.getElementById('win-lead').innerText = `${lead} TILE${lead === 1 ? '' : 'S'} AHEAD`;
+            document.getElementById('win-time').innerText = `${timeMins} MINUTE${timeMins === '1.0' ? '' : 'S'}`;
+            
+            const roast = ROASTS[Math.floor(Math.random() * ROASTS.length)];
+            document.getElementById('roast-text').innerText = `"In those ${timeMins} minutes, ${roast}"`;
+            
+            document.getElementById('game-over-modal').classList.remove('hidden');
+        }
+
+        document.getElementById('qte-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = document.getElementById('qte-input');
+            const target = input.getAttribute('data-target') || '';
+            const cleanInput = input.value.replace(/\s+/g, '').toUpperCase();
+            const cleanTarget = target.replace(/\s+/g, '').toUpperCase();
+
+            if (cleanInput === cleanTarget && cleanTarget.length > 0) {
+                resolveMove((Date.now() - state.startTime) / 1000);
+            } else {
+                state.mistakeCount++;
+                input.value = '';
+                renderCharDisplay(document.getElementById('qte-char-display'), target, '');
+                if (state.mistakeCount === 1) {
+                    showSarcasm('fail', "TYPO! ONE MORE CHANCE!");
+                } else {
+                    showSarcasm('fail', "FAILED TURN!");
+                    resolveMove(999);
+                }
+            }
+        });
+
+        document.getElementById('qte-input').addEventListener('input', (e) => {
+            const target = e.target.getAttribute('data-target') || '';
+            const display = document.getElementById('qte-char-display');
+            
+            // Live color rendering on main word bar
+            renderCharDisplay(display, target, e.target.value);
+
+            const cleanInput = e.target.value.replace(/\s+/g, '').toUpperCase();
+            const cleanTarget = target.replace(/\s+/g, '').toUpperCase();
+
+            if (cleanInput === cleanTarget && cleanTarget.length > 0) {
+                resolveMove((Date.now() - state.startTime) / 1000);
+            }
+        });
+
+        document.getElementById('speed-qte-input').addEventListener('input', handleSpeedInput);
+        document.getElementById('speed-action-btn').addEventListener('click', handleSpeedAction);
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                const rulesModal = document.getElementById('rules-modal');
+                if (rulesModal && !rulesModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    closePermissionsModal();
+                    return;
+                }
+
+                const speedModal = document.getElementById('speed-round-modal');
+                if (speedModal && !speedModal.classList.contains('hidden')) {
+                    const btn = document.getElementById('speed-action-btn');
+                    if (btn && !btn.classList.contains('hidden')) {
+                        e.preventDefault();
+                        btn.click();
+                        return;
+                    }
+                }
+
+                const gameOverModal = document.getElementById('game-over-modal');
+                if (gameOverModal && !gameOverModal.classList.contains('hidden')) {
+                    e.preventDefault();
+                    resetGame(false);
+                    return;
+                }
+
+                const startBtn = document.getElementById('start-btn');
+                const qteActive = document.getElementById('qte-active');
+                if (startBtn && !startBtn.classList.contains('hidden') && qteActive && qteActive.classList.contains('hidden')) {
+                    e.preventDefault();
+                    startTurn();
+                    return;
+                }
+            }
+        });
+
+        document.getElementById('accept-rules-btn').addEventListener('click', () => {
+            closePermissionsModal();
+        });
+
+        document.getElementById('restart-game-btn').addEventListener('click', () => {
+            resetGame(false);
+        });
+
+        document.getElementById('top-restart-btn').addEventListener('click', () => {
+            resetGame(false);
+        });
+
+        document.getElementById('start-btn').addEventListener('click', startTurn);
+
+        // Guaranteed document readiness
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initBoard);
+        } else {
+            initBoard();
+        }
+    </script>
+</body>
+</html>
