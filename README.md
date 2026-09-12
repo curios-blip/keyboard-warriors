@@ -14,7 +14,7 @@ A two player typing game — race your opponent across a 50-tile board by typing
 
 ## Play it Live
 
-[Play here](https://<curios-blip>.github.io/keyboard-warriors/)
+[Play here](https://curios-blip.github.io/keyboard-warriors/) 
 
 ## Built With
 
